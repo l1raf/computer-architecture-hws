@@ -62,7 +62,7 @@ section '.code' readable executable
                 cmp eax, 0
                 jg getArray
 ; Wrong size
-                push array_size
+                push [array_size]
                 push strIncorrectSize
                 call [printf]
                 jmp finish
