@@ -1,7 +1,7 @@
 ; Вариант 10
-; Разработать программу, использующую динамическое выделение памяти под массив,
-; которая вводит одномерный массив A[N], формирует из элементов массива A новый
-; массив B из элементов A в обратном порядке
+; Разработать программу, которая вводит одномерный массив A[N],
+; формирует новый массив B из элементов A в обратном порядке
+; Create array B that contains elements from array A in reverse order
 
 format PE console
 
@@ -11,80 +11,104 @@ include 'win32ax.inc'
 
 section '.data' data readable writable
 
-        strArraySize db 'Enter array size: ', 0
-        strIncorrectSize db 'Incorrect array size %d', 10, 0
-        strInputElem db 'A[%d] = ', 0
-        strOutputElem db 'B[%d] = %d ', 10, 0
-
-        spaceStr db ' %d', 0
-        emptyStr db '%d', 0
-        newLine db '', 10, 0
-
-        infinity db 'infinity', 0
+        strArraySize     db 'Enter array size: ', 0
+        strIncorrectSize db 'Incorrect size of array %d', 10, 0
+        strInputElem     db 'A[%d] = ', 0
+        strOutputElem    db 'B[%d] = %d ', 10, 0
+        strOutputArray   db 'Array B: ', 10, 0
+        spaceStr         db ' %d', 0
+        emptyStr         db '%d', 0
+        newLine          db '', 10, 0
 
         array_size dd 0
-        tmp dd ?
-        num dd ?
-        array_A rd 100
-        array_B rd 100
+        tmp        dd ?
+        i          dd ?
+        tmpStack   dd ?
+        array_A    rd 1000
+        array_B    rd 1000
 
         NULL = 0
 
 section '.code' readable executable
 
         start:
-; Get array size
+; Get array A
+                call ArrayInput
+
+; Get array B
+                call GetArrayB
+
+; Print array B
+                call PrintArrayB
+
+        finish:
+                call [getch]
+
+                push NULL
+                call [ExitProcess]
+;-------------------------------------------------
+
+        ArrayInput:
                 push strArraySize
                 call[printf]
+                add esp, 4
 
                 push array_size
                 push spaceStr
                 call [scanf]
+                add esp, 8
 
                 mov eax, [array_size]
                 cmp eax, 0
-                jg .getArray
+                jg getArray
 ; Wrong size
                 push array_size
                 push strIncorrectSize
                 call [printf]
                 jmp finish
 
-        .getArray:
+; Fill array A
+        getArray:
                 xor ecx, ecx
                 mov ebx, array_A
 
-        .getArrayLoop:
+        getArrayLoop:
                 mov [tmp], ebx
                 cmp ecx, [array_size]
-                jge .endInput
+                jge endInput
 
-                mov [num], ecx
+                mov [i], ecx
 
                 push ecx
                 push strInputElem
                 call [printf]
+                add esp, 8
 
                 push ebx
                 push emptyStr
                 call [scanf]
+                add esp, 8
 
-                mov ecx, [num]
+                mov ecx, [i]
                 inc ecx
 
                 mov ebx, [tmp]
                 add ebx, 4
-                jmp .getArrayLoop
-        .endInput:
+                jmp getArrayLoop
 
-        .getArrayB:
+        endInput:
+                ret
+;-------------------------------------------------
+
+        GetArrayB:
+; Fill array B
                 xor ecx, ecx
                 mov edx, array_B
                 sub ebx, 4
 
-        .getArrayBLoop:
+        getArrayBLoop:
                 cmp ecx, [array_size]
-                je .endGetArrayB
+                je endGetArrayB
 
                 mov eax, [ebx]
                 mov [edx], eax
@@ -92,39 +116,47 @@ section '.code' readable executable
                 inc ecx
                 add edx, 4
                 sub ebx, 4
-                jmp .getArrayBLoop
-        .endGetArrayB:
+                jmp getArrayBLoop
 
-        .printArrayB:
+        endGetArrayB:
+                ret
+;-------------------------------------------------
+
+        PrintArrayB:
                 push newLine
                 call [printf]
+                add esp, 4
 
+                push strOutputArray
+                call [printf]
+                add esp, 4
+
+                mov [tmpStack], esp
                 xor ecx, ecx
                 mov edx, array_B
 
-        .printArrayBLoop:
+        printArrayBLoop:
                 mov [tmp], edx
                 cmp ecx, [array_size]
-                je .endPrint
+                je endPrint
 
-                mov [num], ecx
+                mov [i], ecx
+
                 push dword [edx]
                 push ecx
                 push strOutputElem
                 call [printf]
 
-                mov ecx, [num]
+                mov ecx, [i]
                 inc ecx
                 mov edx, [tmp]
                 add edx, 4
-                jmp .printArrayBLoop
-        .endPrint:
+                jmp printArrayBLoop
 
-        finish:
-                call [getch]
-
-                push NULL
-                call [ExitProcess]
+        endPrint:
+                mov esp, [tmpStack]
+                ret
+;-------------------------------------------------
 
 section '.idata' import data readable
 
