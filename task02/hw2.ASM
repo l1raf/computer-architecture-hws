@@ -12,7 +12,7 @@ include 'win32ax.inc'
 section '.data' data readable writable
 
         strArraySize     db 'Enter array size: ', 0
-        strIncorrectSize db 'Incorrect size of array %d', 10, 0
+        strIncorrectSize db 'Incorrect size of array', 10, 0
         strInputElem     db 'A[%d] = ', 0
         strOutputElem    db 'B[%d] = %d ', 10, 0
         strOutputArray   db 'Array B: ', 10, 0
@@ -62,7 +62,6 @@ section '.code' readable executable
                 cmp eax, 0
                 jg getArray
 ; Wrong size
-                push [array_size]
                 push strIncorrectSize
                 call [printf]
                 jmp finish
