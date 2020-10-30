@@ -10,21 +10,21 @@ include 'win32a.inc'
 
 section '.data' data readable writable
 
-        strInput      db 'Enter x: ', 0
-        strWrongInput db 'Incorrect value of x', 10, 0
-        fmt           db '%lf', 0
-        fmtp          db '%lf', 13, 10, 0
-        outputStr     db 'exp(%g) = %lf', 10, 0
+        strInput       db 'Enter x: ', 0
+        strOutOfBounds db 'Value of x out of bounds.', 10, 0
+        strWrongFormat db 'Input value must be number.', 10, 0
+        fmt            db '%lf', 0
+        fmtp           db '%lf', 13, 10, 0
+        outputStr      db 'exp(%g) = %lf', 10, 0
 
-        x             dq 0
-        maxR          dd 709.0
-        maxL          dd -5.0
-        result        dq 1.0
-        component     dq 1.0
-        tmpStack      dd ?
-        m             dq 1.0
-        i             dd 0
-        eps           dq 0.001
+        x              dq 0
+        maxR           dd 709.0
+        maxL           dd -5.0
+        result         dq 1.0
+        component      dq 1.0
+        tmpStack       dd ?
+        i              dd 0
+        eps            dq 0.001
 
         NULL = 0
 
@@ -36,18 +36,23 @@ section '.code' readable executable
 
         ; Calcs exp(x)
                 call CalcExp
+
         ; Print result
                 invoke printf, outputStr, dword [x], dword [x + 4],\
                                           dword[result], dword[result + 4]
 
         finish:
                 call [getch]
-
                 push NULL
                 call [ExitProcess]
 
-        wrongInput:
-                push strWrongInput
+        outOfBounds:
+                push strOutOfBounds
+                call [printf]
+                jmp finish
+
+        wrongFormat:
+                push strWrongFormat
                 call [printf]
                 jmp finish
 
@@ -59,18 +64,21 @@ section '.code' readable executable
                 invoke printf, strInput
                 invoke scanf, fmt, x
 
+                cmp eax, 1
+                jne wrongFormat ; jump to wrongFormat if input value isn't a number
+
                 finit
                 fld [x]         ; st0 = x
-                fcom [maxR]     ; compare x with right border 700.0
+                fcom [maxR]     ; compare x with right border 709.0
                 fstsw ax
                 sahf
-                ja wrongInput
+                ja outOfBounds  ; jump to outOfBounds if x more than 709.0
 
-        secondCheck:
-                fcomp [maxL]    ; compare x with left border -10.0
+        checkLeftBorder:
+                fcomp [maxL]    ; compare x with left border -5.0
                 fstsw ax
                 sahf
-                jb wrongInput
+                jb outOfBounds  ; jump to outOfBounds if x less than -5.0
 
                 mov esp, [tmpStack]
                 ret
@@ -82,6 +90,7 @@ section '.code' readable executable
 
         expLoop:
                 inc [i]          ; i++
+
                 ; component *= x / i
                 fld [x]          ; st0 = x
                 fidiv [i]        ; st0 = x / i
@@ -95,10 +104,10 @@ section '.code' readable executable
 
                 fld [component]  ; st0 = component
                 fabs             ; st0 = |component|
-                fcomp [eps]      ; compare st0 with 0.001
+                fcomp [eps]      ; compare |component| with 0.001
                 fstsw ax
                 sahf
-                ja expLoop
+                ja expLoop       ; continue loop if result isn't accurate enough
 
                 mov esp, [tmpStack]
                 ret
