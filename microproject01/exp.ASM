@@ -1,3 +1,8 @@
+; Разработать программу, вычисляющую с
+; помощью степенного ряда с точностью не
+; хуже 0,1% значение функции exp(x) для
+; заданного параметра x (использовать FPU)
+
 format PE console
 entry start
 
@@ -9,16 +14,17 @@ section '.data' data readable writable
         strWrongInput db 'Incorrect value of x', 10, 0
         fmt           db '%lf', 0
         fmtp          db '%lf', 13, 10, 0
-        outputStr     db 'exp(%lf) = %lf', 10, 0
+        outputStr     db 'exp(%g) = %lf', 10, 0
 
         x             dq 0
-        maxR          dd 700.0
+        maxR          dd 709.0
+        maxL          dd -5.0
         result        dq 1.0
         component     dq 1.0
         tmpStack      dd ?
         m             dq 1.0
         i             dd 0
-        eps           dq 0.0000000000001
+        eps           dq 0.001
 
         NULL = 0
 
@@ -55,10 +61,16 @@ section '.code' readable executable
 
                 finit
                 fld [x]         ; st0 = x
-                fcomp [maxR]    ; compare x with 700.0
+                fcom [maxR]     ; compare x with right border 700.0
                 fstsw ax
                 sahf
                 ja wrongInput
+
+        secondCheck:
+                fcomp [maxL]    ; compare x with left border -10.0
+                fstsw ax
+                sahf
+                jb wrongInput
 
                 mov esp, [tmpStack]
                 ret
