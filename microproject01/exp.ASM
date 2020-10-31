@@ -11,17 +11,17 @@ include 'win32a.inc'
 section '.data' data readable writable
 
         strInput       db 'Enter x: ', 0
-        strOutOfBounds db 'Value of x out of bounds.', 10, 0
-        strWrongFormat db 'Input value must be number.', 10, 0
+        strOutOfBounds db 'The input value is too small.', 10, 0
+        strWrongFormat db 'The input value must be a number.', 10, 0
+        strInfRes      db 'The value of exp(x) is too big.', 10, 0
         fmt            db '%lf', 0
         fmtp           db '%lf', 13, 10, 0
         outputStr      db 'exp(%g) = %lf', 10, 0
 
-        x              dq 0
-        maxR           dd 709.0
-        maxL           dd -5.0
-        result         dq 1.0
-        component      dq 1.0
+        x              dq ?
+        maxL           dd -6.0
+        result         dq 1.0      ; result of calculation exp(x)
+        x_n            dq 1.0
         tmpStack       dd ?
         i              dd 0
         eps            dq 0.001
@@ -39,12 +39,17 @@ section '.code' readable executable
 
         ; Print result
                 invoke printf, outputStr, dword [x], dword [x + 4],\
-                                          dword[result], dword[result + 4]
+                                          dword [result], dword [result + 4]
 
         finish:
                 call [getch]
                 push NULL
                 call [ExitProcess]
+
+        inf:
+                push strInfRes
+                call [printf]
+                jmp finish
 
         outOfBounds:
                 push strOutOfBounds
@@ -69,16 +74,10 @@ section '.code' readable executable
 
                 finit
                 fld [x]         ; st0 = x
-                fcom [maxR]     ; compare x with right border 709.0
+                fcomp [maxL]    ; compare x with left border -6.0
                 fstsw ax
                 sahf
-                ja outOfBounds  ; jump to outOfBounds if x more than 709.0
-
-        checkLeftBorder:
-                fcomp [maxL]    ; compare x with left border -5.0
-                fstsw ax
-                sahf
-                jb outOfBounds  ; jump to outOfBounds if x less than -5.0
+                jb outOfBounds  ; jump to outOfBounds if x less than -6.0
 
                 mov esp, [tmpStack]
                 ret
@@ -89,22 +88,28 @@ section '.code' readable executable
                 mov [tmpStack], esp
 
         expLoop:
+        ; check if result is infinity
+                fstsw ax
+                and ax, 1000b
+                cmp ax, 0
+                jg inf
+
                 inc [i]          ; i++
 
-                ; component *= x / i
+                ; x_n *= x / i
                 fld [x]          ; st0 = x
                 fidiv [i]        ; st0 = x / i
-                fmul [component] ; component *= st0
-                fstp [component] ; component = st0
+                fmul [x_n]       ; x_n *= st0
+                fstp [x_n]       ; x_n = st0
 
-                ; result += component
+                ; result += x_n
                 fld [result]     ; st0 = result
-                fadd [component] ; st0 += component
+                fadd [x_n]       ; st0 += x_n
                 fstp [result]    ; result = st0
 
-                fld [component]  ; st0 = component
-                fabs             ; st0 = |component|
-                fcomp [eps]      ; compare |component| with 0.001
+                fld [x_n]        ; st0 = x_n
+                fabs             ; st0 = |x_n|
+                fcomp [eps]      ; compare |x_n| with 0.001
                 fstsw ax
                 sahf
                 ja expLoop       ; continue loop if result isn't accurate enough
